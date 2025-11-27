@@ -3,6 +3,7 @@ package com.estoque.dao;
 import com.estoque.model.Categoria;
 import com.estoque.model.Movimentacao;
 import com.estoque.model.Produto;
+import com.estoque.util.MigrationRunner;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -17,45 +18,9 @@ public class EstoqueDAO {
     static {
         try {
             Class.forName("org.h2.Driver");
-            criarTabelas();
+            // Executar migrations ao invés de criar tabelas diretamente
+            MigrationRunner.runMigrations();
         } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-    }
-    
-    private static void criarTabelas() {
-        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
-             Statement stmt = conn.createStatement()) {
-            
-            // Tabela de categorias
-            stmt.execute("CREATE TABLE IF NOT EXISTS categorias (" +
-                    "id INT IDENTITY PRIMARY KEY, " +
-                    "nome VARCHAR(100) NOT NULL, " +
-                    "tamanho VARCHAR(20) NOT NULL, " +
-                    "embalagem VARCHAR(20) NOT NULL)");
-            
-            // Tabela de produtos
-            stmt.execute("CREATE TABLE IF NOT EXISTS produtos (" +
-                    "id INT IDENTITY PRIMARY KEY, " +
-                    "nome VARCHAR(100) NOT NULL, " +
-                    "preco_unitario DECIMAL(10,2) NOT NULL, " +
-                    "unidade VARCHAR(20) NOT NULL, " +
-                    "quantidade_estoque INT NOT NULL, " +
-                    "quantidade_minima INT NOT NULL, " +
-                    "quantidade_maxima INT NOT NULL, " +
-                    "categoria_id INT, " +
-                    "FOREIGN KEY (categoria_id) REFERENCES categorias(id))");
-            
-            // Tabela de movimentações
-            stmt.execute("CREATE TABLE IF NOT EXISTS movimentacoes (" +
-                    "id INT IDENTITY PRIMARY KEY, " +
-                    "produto_id INT NOT NULL, " +
-                    "data_movimentacao DATE NOT NULL, " +
-                    "quantidade INT NOT NULL, " +
-                    "tipo VARCHAR(10) NOT NULL, " +
-                    "FOREIGN KEY (produto_id) REFERENCES produtos(id))");
-            
-        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
@@ -144,7 +109,12 @@ public class EstoqueDAO {
             pstmt.setInt(4, produto.getQuantidadeEstoque());
             pstmt.setInt(5, produto.getQuantidadeMinima());
             pstmt.setInt(6, produto.getQuantidadeMaxima());
-            pstmt.setInt(7, produto.getCategoriaId());
+            // Se categoriaId for 0, usar NULL
+            if (produto.getCategoriaId() > 0) {
+                pstmt.setInt(7, produto.getCategoriaId());
+            } else {
+                pstmt.setNull(7, java.sql.Types.INTEGER);
+            }
             pstmt.executeUpdate();
         }
     }
@@ -212,7 +182,12 @@ public class EstoqueDAO {
             pstmt.setInt(4, produto.getQuantidadeEstoque());
             pstmt.setInt(5, produto.getQuantidadeMinima());
             pstmt.setInt(6, produto.getQuantidadeMaxima());
-            pstmt.setInt(7, produto.getCategoriaId());
+            // Se categoriaId for 0, usar NULL
+            if (produto.getCategoriaId() > 0) {
+                pstmt.setInt(7, produto.getCategoriaId());
+            } else {
+                pstmt.setNull(7, java.sql.Types.INTEGER);
+            }
             pstmt.setInt(8, produto.getId());
             pstmt.executeUpdate();
         }
@@ -255,16 +230,25 @@ public class EstoqueDAO {
             }
             
             // Atualizar estoque do produto
-            String sqlProd = "UPDATE produtos SET quantidade_estoque = quantidade_estoque + ? " +
-                            "WHERE id = ?";
-            if ("Saída".equals(movimentacao.getTipo())) {
-                sqlProd = "UPDATE produtos SET quantidade_estoque = quantidade_estoque - ? " +
-                         "WHERE id = ?";
+            String tipo = movimentacao.getTipo() != null ? movimentacao.getTipo().trim() : "";
+            String sqlProd;
+            
+            // Verificar se é saída (com ou sem acento)
+            if (tipo.equalsIgnoreCase("Saída") || tipo.equalsIgnoreCase("Saida") || tipo.equalsIgnoreCase("Saida")) {
+                // Saída: diminuir a quantidade do estoque
+                sqlProd = "UPDATE produtos SET quantidade_estoque = quantidade_estoque - ? WHERE id = ?";
+            } else {
+                // Entrada: aumentar a quantidade do estoque
+                sqlProd = "UPDATE produtos SET quantidade_estoque = quantidade_estoque + ? WHERE id = ?";
             }
+            
             try (PreparedStatement pstmt = conn.prepareStatement(sqlProd)) {
                 pstmt.setInt(1, movimentacao.getQuantidade());
                 pstmt.setInt(2, movimentacao.getProdutoId());
-                pstmt.executeUpdate();
+                int rowsUpdated = pstmt.executeUpdate();
+                if (rowsUpdated == 0) {
+                    throw new SQLException("Produto não encontrado para atualização");
+                }
             }
             
             conn.commit();

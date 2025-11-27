@@ -1,6 +1,21 @@
 version: '3.8'
 
 services:
+  # Banco de dados H2 em modo servidor (opcional - para persistência)
+  h2-database:
+    image: oscarfonts/h2:latest
+    container_name: h2-database
+    ports:
+      - "8082:8082"  # Console web do H2
+      - "9092:9092"  # Porta TCP do H2
+    environment:
+      - H2_OPTIONS=-web -webAllowOthers -tcp -tcpAllowOthers -baseDir /opt/h2-data
+    volumes:
+      - h2-data:/opt/h2-data
+    networks:
+      - estoque-network
+    restart: unless-stopped
+
   estoque-app:
     build:
       context: .
@@ -10,9 +25,17 @@ services:
       - "8080:8080"
     environment:
       - JAVA_OPTS=-Xmx512m -Xms256m
+      # Se quiser usar o H2 externo, descomente e ajuste a URL no EstoqueDAO.java
+      # - DB_URL=jdbc:h2:tcp://h2-database:9092/./estoque
+    depends_on:
+      - h2-database
     restart: unless-stopped
     networks:
       - estoque-network
+
+volumes:
+  h2-data:
+    driver: local
 
 networks:
   estoque-network:

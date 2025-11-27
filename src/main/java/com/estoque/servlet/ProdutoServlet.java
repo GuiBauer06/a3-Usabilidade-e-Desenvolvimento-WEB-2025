@@ -4,14 +4,12 @@ import com.estoque.dao.EstoqueDAO;
 import com.estoque.model.Produto;
 
 import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.SQLException;
 
-@WebServlet("/produto")
 public class ProdutoServlet extends HttpServlet {
     private EstoqueDAO dao = new EstoqueDAO();
     
@@ -63,8 +61,10 @@ public class ProdutoServlet extends HttpServlet {
                 produto.setQuantidadeMaxima(Integer.parseInt(request.getParameter("quantidadeMaxima")));
                 
                 String categoriaIdStr = request.getParameter("categoriaId");
-                if (categoriaIdStr != null && !categoriaIdStr.isEmpty()) {
+                if (categoriaIdStr != null && !categoriaIdStr.isEmpty() && !categoriaIdStr.equals("0")) {
                     produto.setCategoriaId(Integer.parseInt(categoriaIdStr));
+                } else {
+                    produto.setCategoriaId(0); // 0 indica sem categoria
                 }
                 
                 if (produto.getId() > 0) {
