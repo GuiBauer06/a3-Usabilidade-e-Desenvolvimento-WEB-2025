@@ -1,0 +1,14 @@
+target/
+*.class
+*.war
+*.jar
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+.DS_Store
+.git/
+.gitignore
+README.md
+

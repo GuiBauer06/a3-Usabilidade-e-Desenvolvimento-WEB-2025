@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  estoque-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sistema-estoque
+    ports:
+      - "8080:8080"
+    environment:
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    restart: unless-stopped
+    networks:
+      - estoque-network
+
+networks:
+  estoque-network:
+    driver: bridge
+
