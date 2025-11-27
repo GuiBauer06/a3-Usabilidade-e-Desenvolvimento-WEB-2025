@@ -231,15 +231,34 @@ public class EstoqueDAO {
             
             // Atualizar estoque do produto
             String tipo = movimentacao.getTipo() != null ? movimentacao.getTipo().trim() : "";
+            
+            // Debug: verificar o valor recebido
+            System.out.println("DEBUG: Tipo de movimentação recebido: '" + tipo + "'");
+            System.out.println("DEBUG: Comparação com 'Saída': " + tipo.equals("Saída"));
+            System.out.println("DEBUG: Comparação ignoreCase 'Saída': " + tipo.equalsIgnoreCase("Saída"));
+            
             String sqlProd;
             
-            // Verificar se é saída (com ou sem acento)
-            if (tipo.equalsIgnoreCase("Saída") || tipo.equalsIgnoreCase("Saida") || tipo.equalsIgnoreCase("Saida")) {
+            // Verificar se é saída - múltiplas formas de verificação
+            boolean isSaida = false;
+            if (tipo != null && !tipo.isEmpty()) {
+                String tipoLower = tipo.toLowerCase().trim();
+                // Verificar várias possibilidades
+                isSaida = tipoLower.equals("saída") || 
+                         tipoLower.equals("saida") ||
+                         tipoLower.startsWith("sa") ||
+                         tipo.contains("Saída") ||
+                         tipo.contains("Saida");
+            }
+            
+            if (isSaida) {
                 // Saída: diminuir a quantidade do estoque
                 sqlProd = "UPDATE produtos SET quantidade_estoque = quantidade_estoque - ? WHERE id = ?";
+                System.out.println("DEBUG: Aplicando SAÍDA - SUBTRAINDO " + movimentacao.getQuantidade() + " do estoque");
             } else {
                 // Entrada: aumentar a quantidade do estoque
                 sqlProd = "UPDATE produtos SET quantidade_estoque = quantidade_estoque + ? WHERE id = ?";
+                System.out.println("DEBUG: Aplicando ENTRADA - SOMANDO " + movimentacao.getQuantidade() + " ao estoque");
             }
             
             try (PreparedStatement pstmt = conn.prepareStatement(sqlProd)) {
@@ -249,6 +268,7 @@ public class EstoqueDAO {
                 if (rowsUpdated == 0) {
                     throw new SQLException("Produto não encontrado para atualização");
                 }
+                System.out.println("DEBUG: SQL executado: " + sqlProd);
             }
             
             conn.commit();
