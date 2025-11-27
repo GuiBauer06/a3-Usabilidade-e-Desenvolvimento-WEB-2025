@@ -195,4 +195,4 @@ Este projeto foi desenvolvido para fins acadêmicos.
 ## 👨‍💻 Autor
 
 Desenvolvido como projeto acadêmico de sistema web utilizando Java Servlet e JSP.
-
+ Sérgio Anderson Guiraldelli Júnior & Guilherme Bauer Masschmann
